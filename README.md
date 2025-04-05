@@ -1,6 +1,6 @@
 # 🚀 Multi-Protocol Communication Module  
 
-This repository contains Verilog HDL modules for a **multi-protocol communication module** that supports **SPI, I2C, and UART** for seamless data transmission between transmitter and receiver nodes.  
+This repository contains Verilog HDL modules and Constraint file for FPGA implementation of a **multi-protocol communication module** that supports **SPI, I2C, and UART** for seamless data transmission between transmitter and receiver nodes.  
 
 ## 📌 Features  
 ✅ Supports **SPI, I2C, and UART** protocols  
