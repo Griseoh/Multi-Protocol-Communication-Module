@@ -4,7 +4,7 @@ This repository contains Verilog HDL modules and Constraint file for FPGA implem
 
 ## 📌 Features  
 ✅ Supports **SPI, I2C, and UART** protocols  
-✅ Efficient **Master Transmitter & Receiver** design  
+✅ Efficient **Modular** design  
 ✅ Modular **Verilog HDL implementation**  
 ✅ Simulated & verified with **waveforms**  
 
