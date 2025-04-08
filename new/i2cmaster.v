@@ -20,25 +20,26 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, ack_err, done);
+module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, ack_err, done, master_sda_en, msda_buffer);
     input clk, rst, new_dat;
     input [6:0]addr;
     input r_w;
-    inout sda;
+    input sda;
     output scl;
     input [7:0]dat_in;
     output [7:0]dat_out;
     output reg busy, ack_err, done;
-    
+    output master_sda_en;
+    output msda_buffer;
     reg buf_scl = 0;
     reg buf_sda = 0;
     reg [3:0]bit_cnt = 0;
     reg[7:0]data_addr = 0, data_tx = 0;
     reg r_ack = 0;
     reg [7:0]data_rx = 0;
-    reg sda_en = 0;
-    parameter board_freq = 50000000;
-    parameter i2c_freq = 125000;
+    reg m_sda_en = 0;
+    parameter board_freq = 125000000;
+    parameter i2c_freq = 312500;
     parameter single_bit_dur = (board_freq/i2c_freq); //-> 400
     parameter delta = single_bit_dur/4; //-> 100
     parameter IDLE = 0, START = 1, WRITE_ADDR = 2, ACK = 3, WRITE_DATA = 4, READ_DATA = 5, STOP = 6, ACK_2 = 7, MASTER_ACK = 8;
@@ -47,7 +48,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
     reg i2c_clk = 0;
     reg [1:0]pulse = 0;
     //Pulse Generation Logic
-    always @(posedge clk)begin
+    always @(posedge clk or posedge rst)begin
         if(rst)begin
             pulse <= 0;
             count <= 0;
@@ -77,7 +78,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
         end
     end
     //Master FSM Logic
-    always @(posedge clk)begin
+    always @(posedge clk or posedge rst)begin
         if(rst)begin
             bit_cnt <= 0;
             data_addr <= 0;
@@ -111,7 +112,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                     end
                 end
                 START:begin
-                    sda_en <= 1'b1;
+                    m_sda_en <= 1'b1;
                     case(pulse)
                         0:begin
                             buf_scl <= 1'b1;
@@ -138,7 +139,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                             state <= START;
                 end
                 WRITE_ADDR:begin
-                    sda_en <= 1'b1;
+                    m_sda_en <= 1'b1;
                     if(bit_cnt <= 7)begin
                         case(pulse)
                             0:begin
@@ -168,11 +169,11 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                     else begin
                         state <= ACK;
                         bit_cnt <= 0;
-                        sda_en <= 1'b0;
+                        m_sda_en <= 1'b0;
                     end
                 end
                 ACK:begin
-                    sda_en <= 1'b0;
+                    m_sda_en <= 1'b0;
                     case(pulse)    
                         0:begin
                             buf_scl <= 1'b0;
@@ -195,18 +196,18 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                         if(r_ack == 1'b0 && data_addr[0] == 1'b0)begin
                             state <= WRITE_DATA;
                             buf_sda <= 1'b0;
-                            sda_en <= 1'b1;
+                            m_sda_en <= 1'b1;
                             bit_cnt <= 0;
                         end
                         else if(r_ack == 1'b0 && data_addr[0] == 1'b1)begin
                             state <= READ_DATA;
                             buf_sda <= 1'b1;
-                            sda_en <= 1'b0;
+                            m_sda_en <= 1'b0;
                             bit_cnt <= 0;
                         end
                         else begin
                             state <= STOP;
-                            sda_en <= 1'b1;
+                            m_sda_en <= 1'b1;
                             ack_err <= 1'b1;
                         end
                     end
@@ -222,7 +223,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                             end
                             1:begin
                                 buf_scl <= 1'b0;
-                                sda_en <= 1'b1;
+                                m_sda_en <= 1'b1;
                                 buf_sda <= data_tx[7 - bit_cnt];
                             end
                             2:begin
@@ -244,11 +245,11 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                     else begin
                         state <= ACK_2;
                         bit_cnt <= 0;
-                        sda_en <= 1'b0;
+                        m_sda_en <= 1'b0;
                     end
                 end
                 READ_DATA:begin
-                    sda_en <= 1'b0;
+                    m_sda_en <= 1'b0;
                     if(bit_cnt <= 7)begin
                         case(pulse)
                             0:begin
@@ -279,11 +280,11 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                     else begin
                         state <= MASTER_ACK;
                         bit_cnt <= 0;
-                        sda_en <= 1'b1;
+                        m_sda_en <= 1'b1;
                     end
                 end
                 STOP:begin
-                    sda_en <= 1'b1;
+                    m_sda_en <= 1'b1;
                     case(pulse)
                         0:begin
                             buf_scl <= 1'b1;
@@ -306,7 +307,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                         state <= IDLE;
                         buf_scl <= 1'b0;
                         busy <= 1'b0;
-                        sda_en <= 1'b1;
+                        m_sda_en <= 1'b1;
                         done <= 1'b1;
                     end
                     else begin
@@ -314,7 +315,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                     end
                 end
                 ACK_2:begin
-                    sda_en <= 1'b0;
+                    m_sda_en <= 1'b0;
                     case(pulse)
                         0:begin
                             buf_scl <= 1'b0;
@@ -335,7 +336,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                     endcase
                     if(count <= delta*4 - 1)begin
                         buf_sda <= 1'b0;
-                        sda_en <= 1'b1;
+                        m_sda_en <= 1'b1;
                         if(r_ack == 1'b0)begin
                             state <= STOP;
                             ack_err <= 1'b0;
@@ -350,7 +351,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                     end
                 end
                 MASTER_ACK:begin
-                    sda_en <= 1'b1;
+                    m_sda_en <= 1'b1;
                     case(pulse)
                         0:begin
                             buf_scl <= 1'b0;
@@ -372,7 +373,7 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
                     if(count == delta*4 - 1)begin
                         buf_sda <= 1'b0;
                         state <= STOP;
-                        sda_en <= 1'b1;
+                        m_sda_en <= 1'b1;
                     end
                     else begin
                         state <= MASTER_ACK;
@@ -383,7 +384,9 @@ module i2cmaster(clk, rst, new_dat, addr, r_w, sda, scl, dat_in, dat_out, busy, 
         end
     end
     
-    assign sda = (sda_en == 1)?(buf_sda == 0)? 1'b0:1'b1:1'bz;
+    //assign sda = (m_sda_en == 1)?(buf_sda == 0)? 1'b0:1'b1:1'bz;
     assign scl = buf_scl;
     assign dat_out = data_rx;
+    assign master_sda_en = m_sda_en;
+    assign msda_buffer = buf_sda;
 endmodule

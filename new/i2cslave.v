@@ -20,27 +20,28 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module i2cslave(sclk, clk, rst, sda, ack_err, done);
+module i2cslave(sclk, clk, rst, sda, ack_err, done, slave_sda_en, ssda_buffer);
     input sclk, clk, rst;
-    inout sda;
+    input sda;
     output reg ack_err, done;
-    
+    output slave_sda_en;
+    output ssda_buffer;
     reg r_ack;
     reg [3:0]state;
     parameter IDLE = 0, READ_ADDR = 1, SEND_ACK = 2, SEND_DATA = 3, MASTER_ACK = 4, READ_DATA = 5, SEND_ACK_2 = 6, WAIT = 7, DETECT_STOP = 8;
     reg [7:0]memory_bank[7:0];
-    reg [7:0]r_addr;
-    reg [6:0]addr;
+    reg [7:0]r_addr = 0;
+    reg [6:0]addr = 0;
     reg r_mem = 0;
     reg w_mem = 0;
     reg [7:0]dat_in;
     reg [7:0]dat_out;
     reg buf_sda;
-    reg sda_en;
+    reg s_sda_en;
     reg [3:0]bit_cnt = 0;
     reg [3:0]mem_cnt = 0;
-    parameter board_freq = 50000000;
-    parameter i2c_freq = 125000;
+    parameter board_freq = 125000000;
+    parameter i2c_freq = 312500;
     parameter single_bit_dur = (board_freq/i2c_freq); //-> 400
     parameter delta = single_bit_dur/4; //-> 100
     reg [8:0]count = 0;
@@ -48,7 +49,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
     reg [1:0]pulse = 0;
     reg busy = 0;
     //Initializing Memory Bank
-    always @(posedge clk)begin
+    always @(posedge clk or posedge rst)begin
         if(rst)begin
             for(mem_cnt = 0; mem_cnt < 8; mem_cnt = mem_cnt + 1)begin
                 memory_bank[mem_cnt] = mem_cnt;
@@ -63,7 +64,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
         end
     end
     //Pulse Generation Logic
-    always @(posedge clk)begin
+    always @(posedge clk or posedge rst)begin
         if(rst)begin
             pulse <= 0;
             count <= 0;
@@ -93,13 +94,13 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
         end
     end 
     //Slave FSM Logic
-    always @(posedge clk)
+    always @(posedge clk or posedge rst)
     begin
         if(rst)begin
             bit_cnt <= 0;
             state <= IDLE;
             r_addr <= 7'b0000000;
-            sda_en <= 1'b0;
+            s_sda_en <= 1'b0;
             buf_sda <= 1'b0;
             addr <= 0;
             r_mem <= 0;
@@ -120,7 +121,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                     end                  
                 end
                 READ_ADDR:begin
-                    sda_en <= 1'b0;
+                    s_sda_en <= 1'b0;
                     if(bit_cnt <= 7)begin
                         case(pulse)
                             0:begin
@@ -144,11 +145,12 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                     else begin
                         state <= SEND_ACK;
                         bit_cnt <= 0;
-                        sda_en <= 1'b1;
+                        s_sda_en <= 1'b1;
                         addr <= r_addr[7:1];
                     end
                 end
                 SEND_ACK:begin
+                    s_sda_en <= 1'b1;
                     case(pulse)
                         0:begin
                             buf_sda <= 1'b0;
@@ -175,7 +177,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                     end
                 end
                 SEND_DATA:begin
-                    sda_en <= 1'b1;
+                    s_sda_en <= 1'b1;
                     if(bit_cnt <= 7)begin
                         r_mem <= 1'b0;
                         case(pulse)
@@ -200,7 +202,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                     else begin
                         state <= MASTER_ACK;
                         bit_cnt <= 0;
-                        sda_en <= 1'b0;
+                        s_sda_en <= 1'b0;
                     end
                 end
                 MASTER_ACK:begin
@@ -219,12 +221,12 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                         if(r_ack == 1'b1)begin
                             ack_err <= 1'b0;
                             state <= DETECT_STOP;
-                            sda_en <= 1'b0;
+                            s_sda_en <= 1'b0;
                         end
                         else begin
                             ack_err <= 1'b1;
                             state <= DETECT_STOP;
-                            sda_en <= 1'b0;
+                            s_sda_en <= 1'b0;
                         end
                     end
                     else begin
@@ -232,7 +234,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                     end
                 end
                 READ_DATA:begin
-                    sda_en <= 1'b0;
+                    s_sda_en <= 1'b0;
                     if(bit_cnt <= 7)begin
                         case(pulse)
                             0:begin
@@ -256,11 +258,12 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                     else begin
                         state <= SEND_ACK_2;
                         bit_cnt <= 0;
-                        sda_en <= 1'b1;
+                        s_sda_en <= 1'b1;
                         w_mem <= 1'b1;
                     end
                 end
                 SEND_ACK_2:begin
+                    s_sda_en <= 1'b1;
                     case(pulse)
                         0:begin
                             buf_sda <= 1'b0;
@@ -275,7 +278,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                     endcase
                     if(count == delta*4 - 1)begin
                         state <= DETECT_STOP;
-                        sda_en <= 1'b0;
+                        s_sda_en <= 1'b0;
                     end
                     else begin
                         state <= SEND_ACK_2;
@@ -291,9 +294,14 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
                 end
                 DETECT_STOP:begin
                     if(pulse == 2'b11 && count == 399)begin
-                        state <= IDLE;
-                        busy <= 1'b0;
-                        done <= 1'b1;
+                        if(sclk == 1'b1 && sda == 1'b0)begin
+                            state <= WAIT;
+                        end
+                        else begin
+                            state <= IDLE;
+                            busy <= 1'b0;
+                            done <= 1'b1;
+                        end
                     end
                     else begin
                         state <= DETECT_STOP;
@@ -304,5 +312,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done);
         end
     end
     
-    assign sda = (sda_en == 1'b1)? buf_sda : 1'bz;
+    //assign sda = (s_sda_en == 1'b1)? buf_sda : 1'bz;
+    assign slave_sda_en = s_sda_en;
+    assign ssda_buffer = buf_sda;
 endmodule
