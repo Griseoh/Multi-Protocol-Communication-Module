@@ -13,10 +13,12 @@ This repository contains Verilog HDL modules and Constraint file for FPGA implem
 ## 📜 Architecture Overview  
 
 ### 🔷 Top Module Schematic (Pre Synthesis and Implementation)  
-📷 ![Top Module Pre](https://github.com/user-attachments/assets/80e1feda-105c-48ca-b6c0-18d3519ead0d)
+📷 ![Top Module Pre](https://github.com/user-attachments/assets/bc96fe02-1b46-4e35-bcc2-071543a06079)
+
   
 ### 🔷 Top Module Schematic (Post Synthesis and Implementation)
-📷 ![Top Module Post](https://github.com/user-attachments/assets/91bfc3d1-c89a-42aa-b852-7db6c061cc8c)
+📷 ![Top Module Post](https://github.com/user-attachments/assets/0a80a72c-7729-4ca5-b2ce-d140332f8ca0)
+
 
 ---
 
@@ -24,24 +26,29 @@ This repository contains Verilog HDL modules and Constraint file for FPGA implem
 
 ### 🟠 SPI Sub-Module  
 📷 **Schematic:**  
-![SPI Module](https://github.com/user-attachments/assets/b795d015-db60-4032-bb67-8a0133f3c180)
+![SPI Module](https://github.com/user-attachments/assets/004f6de4-7c0e-4966-b119-6b69c94b7eb5)
 
 📉 **Waveform:**  
 ![SPI Waveform](https://github.com/user-attachments/assets/4951bfaa-4919-4f0d-b7ac-8f4c76f9c13b)  
 
 ### 🔵 UART Sub-Module  
 📷 **Schematic:**  
-![UART Module](https://github.com/user-attachments/assets/ccb0d768-219c-413c-9f7a-214ce1879051)
+![UART Module](https://github.com/user-attachments/assets/557e966a-09c0-40ff-88bd-fdb9d2369379)
 
 📉 **Waveform:**  
 ![UART Waveform](https://github.com/user-attachments/assets/a533fa12-e802-47bc-9758-3e7d51735dad)  
 
 ### 🟢 I2C Sub-Module  
 📷 **Schematic:**  
-![I2C Module](https://github.com/user-attachments/assets/3d2d4210-653b-4185-a03d-dd4c8459fb82)
+![I2C Module](https://github.com/user-attachments/assets/3e9886b6-a92d-45ba-b2ef-aa69343076fb)
 
 📉 **Waveform:**  
 ![I2C Waveform](https://github.com/user-attachments/assets/bdc82d01-b63d-4bdd-8e29-df1909d07604)
+
+---
+
+## 📜 Power Analysis
+![Power Report](https://github.com/user-attachments/assets/b47a0a0d-dd55-49ab-9765-9659f02173d8)
 
 ---
 
