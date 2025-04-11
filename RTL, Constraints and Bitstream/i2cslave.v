@@ -114,6 +114,7 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done, slave_sda_en, ssda_buffer);
             case(state)
                 IDLE:begin
                     if(sclk == 1'b1 && sda == 1'b0)begin
+                        done <= 1'b0;
                         busy <= 1'b1;
                         state <= WAIT;
                     end
@@ -295,14 +296,9 @@ module i2cslave(sclk, clk, rst, sda, ack_err, done, slave_sda_en, ssda_buffer);
                 end
                 DETECT_STOP:begin
                     if(pulse == 2'b11 && count == 399)begin
-                        if(sclk == 1'b1 && sda == 1'b0)begin
-                            state <= WAIT;
-                        end
-                        else begin
-                            state <= IDLE;
-                            busy <= 1'b0;
-                            done <= 1'b1;
-                        end
+                        state <= IDLE;
+                        busy <= 1'b0;
+                        done <= 1'b1;
                     end
                     else begin
                         state <= DETECT_STOP;
